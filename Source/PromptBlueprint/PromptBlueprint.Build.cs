@@ -26,6 +26,13 @@ public class PromptBlueprint : ModuleRules
 			new string[]
 			{
 				"Core",
+                 "Core",
+				"CoreUObject",
+				"Engine",
+				"InputCore",
+                 "HTTP",            // <- Required for FHttpModule
+				"Json",            // Required for FJsonValue, FJsonObject
+				"JsonUtilities"    // Required for easier JSON parsing and serialization
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
