@@ -66,22 +66,6 @@ void UOpenRouterFunctionLibrary::AIML_LLMs(const FString& Url, const FString& Us
 			}
 		}
 	}
-	// Set up the request format
-	/*TSharedPtr<FJsonObject> RequestFormat = MakeShared<FJsonObject>();
-	RequestFormat->SetStringField("type", "json_object");
-	JsonObject->SetObjectField("request_format", RequestFormat);*/
-
-
-
-	/*TSharedPtr<FJsonObject> ResponseFormat = MakeShared<FJsonObject>();
-	ResponseFormat->SetStringField("type", "json_object");
-	JsonObject->SetObjectField("response_format", ResponseFormat);*/
-
-	/*JsonObject->SetNumberField("top_p", 1.0);
-	JsonObject->SetNumberField("max_tokens", 200);
-	JsonObject->SetNumberField("presence_penalty", 0.5);
-	JsonObject->SetNumberField("frequency_penalty", 0.0);*/
-
 	TArray<TSharedPtr<FJsonValue>> Messages;
 
 	// Add system message if provided
