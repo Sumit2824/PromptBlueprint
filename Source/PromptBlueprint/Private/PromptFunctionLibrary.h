@@ -4,16 +4,25 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "OpenRouterFunctionLibrary.generated.h"
+#include "PromptFunctionLibrary.generated.h"
 
 /**
  * 
  */
+UENUM(BlueprintType)
+enum class EResponseType : uint8
+{
+    TEXT UMETA(DisplayName = "Text-based string file"),
+    JSON UMETA(DisplayName = "Name of JSON file (e.g., \"example.json\") kept in the project's JSON folder"),
+    TOON UMETA(DisplayName = "Toon (not implemented yet)")
+};
+
+
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FOnChatResponseDetailed, const FString&, ResponseContent, bool, bWasSuccessful, int32, ResponseCode);
 
 
 UCLASS()
-class UOpenRouterFunctionLibrary : public UBlueprintFunctionLibrary
+class UPromptFunctionLibrary : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 	
@@ -26,6 +35,7 @@ public:
        const FString& SystemMessage,  
        const FString& ModelName,  
        const FString& ApiKey,  
+       const EResponseType& ResponseType, 
        const TArray<FString>& AdditionalParams,
        const FOnChatResponseDetailed& Callback,
        const float Temparature = 0.3f

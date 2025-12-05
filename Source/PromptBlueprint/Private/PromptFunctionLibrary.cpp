@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "OpenRouterFunctionLibrary.h"
+#include "PromptFunctionLibrary.h"
 #include "HttpModule.h"
 #include "Interfaces/IHttpResponse.h"
 #include "Http.h"
@@ -13,7 +13,7 @@
 
 
 
-void UOpenRouterFunctionLibrary::AIML_LLMs(const FString& Url, const FString& UserMessage, const FString& SystemMessage, const FString& ModelName, const FString& ApiKey, const TArray<FString>& AdditionalParams, const FOnChatResponseDetailed& Callback, const float Temparature)
+void UPromptFunctionLibrary::AIML_LLMs(const FString& Url, const FString& UserMessage, const FString& SystemMessage, const FString& ModelName, const FString& ApiKey, const EResponseType& ResponseType, const TArray<FString>& AdditionalParams, const FOnChatResponseDetailed& Callback, const float Temparature)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 
@@ -30,42 +30,64 @@ void UOpenRouterFunctionLibrary::AIML_LLMs(const FString& Url, const FString& Us
 	float temp = FMath::Clamp(Temparature, 0.0f, 1.0f);
 	JsonObject->SetNumberField("temperature", temp);
 
-	//If JSONFilePath is provided, read the JSON file and set it in the request
-	if (AdditionalParams.Num() > 0)
+	switch (ResponseType)
 	{
-		for (const FString& JSONFileName : AdditionalParams)
+	case EResponseType::TEXT:
+	{
+		for (const FString& jsonFile : AdditionalParams)
 		{
-			if (JSONFileName.IsEmpty())
+			JsonObject->SetStringField("response_format", jsonFile);
+		}
+	}
+		break;
+	case EResponseType::JSON:
+	{
+		//If JSONFilePath is provided, read the JSON file and set it in the request
+		if (AdditionalParams.Num() > 0)
+		{
+			for (const FString& JSONFileName : AdditionalParams)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Empty JSON file name provided."));
-				continue;
-			}
-			// Load the JSON file content
-			FString JsonContent;
-			FString JSONFilePath = FPaths::ProjectContentDir() / TEXT("JSON") / JSONFileName; // JSON files are stored in a "JSON" folder in the Content directory
-			if (FFileHelper::LoadFileToString(JsonContent, *JSONFilePath))
-			{
-				TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonContent);
-				TSharedPtr<FJsonObject> FileJsonObject;
-				if (FJsonSerializer::Deserialize(Reader, FileJsonObject) && FileJsonObject.IsValid())
+				if (JSONFileName.IsEmpty())
 				{
-					// Merge the JSON file content into the main JsonObject
-					for (const auto& Pair : FileJsonObject->Values)
+					UE_LOG(LogTemp, Warning, TEXT("Empty JSON file name provided."));
+					continue;
+				}
+				// Load the JSON file content
+				FString JsonContent;
+				FString JSONFilePath = FPaths::ProjectContentDir() / TEXT("JSON") / JSONFileName; // JSON files are stored in a "JSON" folder in the Content directory
+				if (FFileHelper::LoadFileToString(JsonContent, *JSONFilePath))
+				{
+					TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonContent);
+					TSharedPtr<FJsonObject> FileJsonObject;
+					if (FJsonSerializer::Deserialize(Reader, FileJsonObject) && FileJsonObject.IsValid())
 					{
-						JsonObject->SetField(Pair.Key, Pair.Value);
+						// Merge the JSON file content into the main JsonObject
+						for (const auto& Pair : FileJsonObject->Values)
+						{
+							JsonObject->SetField(Pair.Key, Pair.Value);
+						}
+					}
+					else
+					{
+						UE_LOG(LogTemp, Warning, TEXT("Failed to parse JSON file: %s"), *JSONFilePath);
 					}
 				}
 				else
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Failed to parse JSON file: %s"), *JSONFilePath);
+					UE_LOG(LogTemp, Warning, TEXT("Failed to load JSON file: %s"), *JSONFilePath);
 				}
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Failed to load JSON file: %s"), *JSONFilePath);
 			}
 		}
 	}
+		break;
+	case EResponseType::TOON:
+	{
+		JsonObject->SetStringField("response_format", "toon");
+	}
+		break;
+	}
+
+	
 	TArray<TSharedPtr<FJsonValue>> Messages;
 
 	// Add system message if provided
@@ -107,7 +129,7 @@ void UOpenRouterFunctionLibrary::AIML_LLMs(const FString& Url, const FString& Us
 	Request->ProcessRequest();
 }
 
-bool UOpenRouterFunctionLibrary::ExtractValueFromChatJson(const FString& JsonString, const TArray<FString>& Keys, FString& OutValue)
+bool UPromptFunctionLibrary::ExtractValueFromChatJson(const FString& JsonString, const TArray<FString>& Keys, FString& OutValue)
 {
 	OutValue = TEXT("");
 
@@ -197,7 +219,7 @@ bool UOpenRouterFunctionLibrary::ExtractValueFromChatJson(const FString& JsonStr
 	return false;
 }
 
-FString UOpenRouterFunctionLibrary::ChatOutput(const FString& JsonString)
+FString UPromptFunctionLibrary::ChatOutput(const FString& JsonString)
 {
 	if (JsonString.IsEmpty())
 	{
