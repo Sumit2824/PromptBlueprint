@@ -1,4 +1,4 @@
-![Prompt Blueprint Logo](Resources/Icon128.png)
+# <img src="Resources/Icon128.png" alt="Prompt Blueprint Logo" width="32" height="32" style="vertical-align: middle;"> Prompt Blueprint
 # 🤖 PromptBlueprint: LLM Integration for Unreal Engine
 
 **PromptBlueprint** is an Unreal Engine plugin that enables seamless communication with **Large Language Models (LLMs)** directly from **Blueprints** and **C++**.
