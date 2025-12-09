@@ -1,11 +1,12 @@
 {
 	"FileVersion": 3,
+	"EngineVersion": "5.6.1",
 	"Version": 1,
 	"VersionName": "1.0",
 	"FriendlyName": "PromptBlueprint",
 	"Description": "This plugin is used to drive LLM using prompt.",
 	"Category": "Other",
-	"CreatedBy": "Sumit",
+	"CreatedBy": "Sumit Das",
 	"CreatedByURL": "",
 	"DocsURL": "",
 	"MarketplaceURL": "",
@@ -18,7 +19,8 @@
 		{
 			"Name": "PromptBlueprint",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [ "Win64", "Linux", "Android" ]
 		}
 	]
 }
