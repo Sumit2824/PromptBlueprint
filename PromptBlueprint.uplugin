@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineVersion": "5.6.1",
+	"EngineVersion": "5.7",
 	"Version": 1,
 	"VersionName": "1.0",
 	"FriendlyName": "PromptBlueprint",
@@ -8,8 +8,8 @@
 	"Category": "Other",
 	"CreatedBy": "Sumit Das",
 	"CreatedByURL": "",
-	"DocsURL": "",
-	"MarketplaceURL": "",
+	"DocsURL": "https://github.com/Sumit2824/PromptBlueprint/blob/main/README.md",
+	"MarketplaceURL": "com.epicgames.launcher://ue/Fab/product/d63ee915-4cf4-45d5-b956a14f73883e3e",
 	"SupportURL": "",
 	"CanContainContent": true,
 	"IsBetaVersion": false,
