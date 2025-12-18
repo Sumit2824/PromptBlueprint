@@ -11,9 +11,7 @@
 #include "Serialization/JsonSerializer.h"
 
 
-
-
-void UPromptFunctionLibrary::AIML_LLMs(const FString& Url, const FString& UserMessage, const FString& SystemMessage, const FString& ModelName, const FString& ApiKey, const EResponseType& ResponseType, const TArray<FString>& AdditionalParams, const FOnChatResponseDetailed& Callback, const float Temparature)
+void UPromptFunctionLibrary::AIML_LLMs(const FString& Url, const FString& InputMessage, const FString& ModelName, const FString& ApiKey, const FOnChatResponseDetailed& Callback, const TArray<FString>& AdditionalParams, const EResponseType& ResponseType, const float Temparature)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 
@@ -30,80 +28,77 @@ void UPromptFunctionLibrary::AIML_LLMs(const FString& Url, const FString& UserMe
 	float temp = FMath::Clamp(Temparature, 0.0f, 1.0f);
 	JsonObject->SetNumberField("temperature", temp);
 
-	switch (ResponseType)
+	if(false/*!AdditionalParams.IsEmpty()*/)
 	{
-	case EResponseType::TEXT:
-	{
-		for (const FString& jsonFile : AdditionalParams)
+		switch (ResponseType)
 		{
-			JsonObject->SetStringField("response_format", jsonFile);
-		}
-	}
-		break;
-	case EResponseType::JSON:
-	{
-		//If JSONFilePath is provided, read the JSON file and set it in the request
-		if (AdditionalParams.Num() > 0)
+		case EResponseType::TEXT:
 		{
-			for (const FString& JSONFileName : AdditionalParams)
+			for (const FString& jsonFile : AdditionalParams)
 			{
-				if (JSONFileName.IsEmpty())
+				JsonObject->SetStringField("response_format", jsonFile);
+			}
+		}
+		break;
+		case EResponseType::JSON:
+		{
+			//If JSONFilePath is provided, read the JSON file and set it in the request
+			if (AdditionalParams.Num() > 0)
+			{
+				for (const FString& JSONFileName : AdditionalParams)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Empty JSON file name provided."));
-					continue;
-				}
-				// Load the JSON file content
-				FString JsonContent;
-				FString JSONFilePath = FPaths::ProjectContentDir() / TEXT("JSON") / JSONFileName; // JSON files are stored in a "JSON" folder in the Content directory
-				if (FFileHelper::LoadFileToString(JsonContent, *JSONFilePath))
-				{
-					TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonContent);
-					TSharedPtr<FJsonObject> FileJsonObject;
-					if (FJsonSerializer::Deserialize(Reader, FileJsonObject) && FileJsonObject.IsValid())
+					if (JSONFileName.IsEmpty())
 					{
-						// Merge the JSON file content into the main JsonObject
-						for (const auto& Pair : FileJsonObject->Values)
+						UE_LOG(LogTemp, Warning, TEXT("Empty JSON file name provided."));
+						continue;
+					}
+					// Load the JSON file content
+					FString JsonContent;
+					FString JSONFilePath = FPaths::ProjectContentDir() / TEXT("JSON") / JSONFileName; // JSON files are stored in a "JSON" folder in the Content directory
+					if (FFileHelper::LoadFileToString(JsonContent, *JSONFilePath))
+					{
+						TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonContent);
+						TSharedPtr<FJsonObject> FileJsonObject;
+						if (FJsonSerializer::Deserialize(Reader, FileJsonObject) && FileJsonObject.IsValid())
 						{
-							JsonObject->SetField(Pair.Key, Pair.Value);
+							// Merge the JSON file content into the main JsonObject
+							for (const auto& Pair : FileJsonObject->Values)
+							{
+								JsonObject->SetField(Pair.Key, Pair.Value);
+							}
+						}
+						else
+						{
+							UE_LOG(LogTemp, Warning, TEXT("Failed to parse JSON file: %s"), *JSONFilePath);
 						}
 					}
 					else
 					{
-						UE_LOG(LogTemp, Warning, TEXT("Failed to parse JSON file: %s"), *JSONFilePath);
+						UE_LOG(LogTemp, Warning, TEXT("Failed to load JSON file: %s"), *JSONFilePath);
 					}
-				}
-				else
-				{
-					UE_LOG(LogTemp, Warning, TEXT("Failed to load JSON file: %s"), *JSONFilePath);
 				}
 			}
 		}
-	}
 		break;
-	case EResponseType::TOON:
-	{
-		JsonObject->SetStringField("response_format", "toon");
-	}
+		case EResponseType::TOON:
+		{
+			JsonObject->SetStringField("response_format", "toon");
+		}
 		break;
+		}
 	}
 
-	
-	TArray<TSharedPtr<FJsonValue>> Messages;
-
-	// Add system message if provided
-	if (!SystemMessage.IsEmpty())
+	// Add Input message 
+	TArray<TSharedPtr<FJsonValue>> MessageArray;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(InputMessage);
+	if (FJsonSerializer::Deserialize(Reader, MessageArray) && MessageArray.IsValidIndex(0))
 	{
-		TSharedPtr<FJsonObject> SystemMsg = MakeShared<FJsonObject>();
-		SystemMsg->SetStringField("role", "system");
-		SystemMsg->SetStringField("content", SystemMessage);
-		Messages.Add(MakeShared<FJsonValueObject>(SystemMsg));
+		JsonObject->SetArrayField("messages", MessageArray);
 	}
-
-	TSharedPtr<FJsonObject> UserMsg = MakeShared<FJsonObject>();
-	UserMsg->SetStringField("role", "user");
-	UserMsg->SetStringField("content", UserMessage);
-	Messages.Add(MakeShared<FJsonValueObject>(UserMsg));
-	JsonObject->SetArrayField("messages", Messages);
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to parse Input Message JSON."));
+	}
 
 	FString RequestBody;
 	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
@@ -243,5 +238,38 @@ FString UPromptFunctionLibrary::ChatOutput(const FString& JsonString)
 		}
 	}
 	return FString();
+}
+
+FString UPromptFunctionLibrary::MessageInput(const FString SystemMessage, const TArray<FChatEntry>& UserMessages)
+{
+	// Add system message if provided
+	TArray<TSharedPtr<FJsonValue>> Messages;
+	if (!SystemMessage.IsEmpty())
+	{
+		TSharedPtr<FJsonObject> SystemMsg = MakeShared<FJsonObject>();
+		SystemMsg->SetStringField("role", "system");
+		SystemMsg->SetStringField("content", SystemMessage);
+		Messages.Add(MakeShared<FJsonValueObject>(SystemMsg));
+	}
+	else
+	{
+		TSharedPtr<FJsonObject> SystemMsg = MakeShared<FJsonObject>();
+		SystemMsg->SetStringField("role", "system");
+		SystemMsg->SetStringField("content", "You are a smart assistant.");
+		Messages.Add(MakeShared<FJsonValueObject>(SystemMsg));
+	}
+
+	for (const FChatEntry& Entry : UserMessages)
+	{
+		TSharedPtr<FJsonObject> UserMsg = MakeShared<FJsonObject>();
+		UserMsg->SetStringField("role", Entry.User);
+		UserMsg->SetStringField("content", Entry.Chat);
+		Messages.Add(MakeShared<FJsonValueObject>(UserMsg));
+	}
+	
+	FString OutputString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
+	FJsonSerializer::Serialize(Messages, Writer);
+	return OutputString;
 }
 

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "AgenticAI.h"
 #include "PromptFunctionLibrary.generated.h"
 
 /**
@@ -12,9 +13,9 @@
 UENUM(BlueprintType)
 enum class EResponseType : uint8
 {
-    TEXT UMETA(DisplayName = "Text-based string file"),
-    JSON UMETA(DisplayName = "Name of JSON file (e.g., \"example.json\") kept in the project's JSON folder"),
-    TOON UMETA(DisplayName = "Toon (not implemented yet)")
+    TEXT UMETA(DisplayName = "Text"),
+    JSON UMETA(DisplayName = "JSON"),
+    TOON UMETA(DisplayName = "Toon ")
 };
 
 
@@ -31,13 +32,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "PromptBlueprint")  
     static void AIML_LLMs(  
        const FString& Url,  
-       const FString& UserMessage,  
-       const FString& SystemMessage,  
+       const FString& InputMessage, 
        const FString& ModelName,  
        const FString& ApiKey,  
-       const EResponseType& ResponseType, 
-       const TArray<FString>& AdditionalParams,
        const FOnChatResponseDetailed& Callback,
+       const TArray<FString>& AdditionalParams,
+       const EResponseType& ResponseType = EResponseType::TEXT, 
        const float Temparature = 0.3f
     );
 	
@@ -48,5 +48,8 @@ public:
 	// Extract a chat output
 	UFUNCTION(BlueprintCallable, Category = "PromptBlueprint")
 	static FString ChatOutput(const FString& JsonString);
+
+	UFUNCTION(BlueprintCallable, Category = "PromptBlueprint")
+	static FString MessageInput(const FString SystemMessage, const TArray<FChatEntry>& UserMessages);
 
 };
