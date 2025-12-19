@@ -6,9 +6,16 @@
 #include "GameFramework/Actor.h"
 #include "AgenticAI.generated.h"
 
+UENUM(BlueprintType)
+enum class EResponseType : uint8
+{
+	TEXT UMETA(DisplayName = "Text"),
+	JSON UMETA(DisplayName = "JSON"),
+	TOON UMETA(DisplayName = "Toon ")
+};
 
 USTRUCT(BlueprintType)
-struct FChatEntry
+struct PROMPTBLUEPRINT_API FChatEntry
 {
 	GENERATED_BODY()
 
@@ -19,8 +26,27 @@ struct FChatEntry
 	FString Chat;
 };
 
+USTRUCT(BlueprintType)
+struct PROMPTBLUEPRINT_API FStructuredOutputOptions
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite)
+	bool IsStructuredOutput = false;
+
+	UPROPERTY(BlueprintReadWrite)
+	bool LoadFile = false;
+
+	UPROPERTY(BlueprintReadWrite)
+	EResponseType ResponseType = EResponseType::JSON;
+
+	UPROPERTY(BlueprintReadWrite)
+	FString SchemaFile = "";
+};
+
+
 UCLASS()
-class AAgenticAI : public AActor
+class PROMPTBLUEPRINT_API AAgenticAI : public AActor
 {
 	GENERATED_BODY()
 	

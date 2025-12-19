@@ -7,37 +7,26 @@
 #include "AgenticAI.h"
 #include "PromptFunctionLibrary.generated.h"
 
-/**
- * 
- */
-UENUM(BlueprintType)
-enum class EResponseType : uint8
-{
-    TEXT UMETA(DisplayName = "Text"),
-    JSON UMETA(DisplayName = "JSON"),
-    TOON UMETA(DisplayName = "Toon ")
-};
 
 
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FOnChatResponseDetailed, const FString&, ResponseContent, bool, bWasSuccessful, int32, ResponseCode);
 
 
 UCLASS()
-class UPromptFunctionLibrary : public UBlueprintFunctionLibrary
+class PROMPTBLUEPRINT_API UPromptFunctionLibrary : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 	
 public:
 	// Generate Text using AIML LLMs
-    UFUNCTION(BlueprintCallable, Category = "PromptBlueprint")  
+    UFUNCTION(BlueprintCallable, Category = "PromptBlueprint", meta = (AutoCreateRefTerm = "StructuredOutput"))
     static void AIML_LLMs(  
        const FString& Url,  
        const FString& InputMessage, 
        const FString& ModelName,  
        const FString& ApiKey,  
        const FOnChatResponseDetailed& Callback,
-       const TArray<FString>& AdditionalParams,
-       const EResponseType& ResponseType = EResponseType::TEXT, 
+	   const FStructuredOutputOptions& StructuredOutput,
        const float Temparature = 0.3f
     );
 	

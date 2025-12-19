@@ -11,7 +11,7 @@
 #include "Serialization/JsonSerializer.h"
 
 
-void UPromptFunctionLibrary::AIML_LLMs(const FString& Url, const FString& InputMessage, const FString& ModelName, const FString& ApiKey, const FOnChatResponseDetailed& Callback, const TArray<FString>& AdditionalParams, const EResponseType& ResponseType, const float Temparature)
+void UPromptFunctionLibrary::AIML_LLMs(const FString& Url, const FString& InputMessage, const FString& ModelName, const FString& ApiKey, const FOnChatResponseDetailed& Callback, const FStructuredOutputOptions& StructuredOutput, const float Temparature)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 
@@ -28,61 +28,51 @@ void UPromptFunctionLibrary::AIML_LLMs(const FString& Url, const FString& InputM
 	float temp = FMath::Clamp(Temparature, 0.0f, 1.0f);
 	JsonObject->SetNumberField("temperature", temp);
 
-	if(false/*!AdditionalParams.IsEmpty()*/)
+	if(StructuredOutput.IsStructuredOutput)
 	{
-		switch (ResponseType)
+		FString content;
+		if (StructuredOutput.LoadFile)
+		{
+			FString JSONFilePath = FPaths::ProjectContentDir() / StructuredOutput.SchemaFile;
+			if(!FFileHelper::LoadFileToString(content, *JSONFilePath))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Failed to load schema file: %s"), *JSONFilePath);
+			}
+		}
+		else
+		{
+			content = StructuredOutput.SchemaFile;
+		}
+		switch (StructuredOutput.ResponseType)
 		{
 		case EResponseType::TEXT:
 		{
-			for (const FString& jsonFile : AdditionalParams)
-			{
-				JsonObject->SetStringField("response_format", jsonFile);
-			}
+			JsonObject->SetStringField("response_format", content);	
 		}
 		break;
 		case EResponseType::JSON:
 		{
-			//If JSONFilePath is provided, read the JSON file and set it in the request
-			if (AdditionalParams.Num() > 0)
+			// Load the JSON file content
+
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(content);
+			TSharedPtr<FJsonObject> FileJsonObject;
+			if (FJsonSerializer::Deserialize(Reader, FileJsonObject) && FileJsonObject.IsValid())
 			{
-				for (const FString& JSONFileName : AdditionalParams)
+				// Merge the JSON file content into the main JsonObject
+				for (const auto& Pair : FileJsonObject->Values)
 				{
-					if (JSONFileName.IsEmpty())
-					{
-						UE_LOG(LogTemp, Warning, TEXT("Empty JSON file name provided."));
-						continue;
-					}
-					// Load the JSON file content
-					FString JsonContent;
-					FString JSONFilePath = FPaths::ProjectContentDir() / TEXT("JSON") / JSONFileName; // JSON files are stored in a "JSON" folder in the Content directory
-					if (FFileHelper::LoadFileToString(JsonContent, *JSONFilePath))
-					{
-						TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonContent);
-						TSharedPtr<FJsonObject> FileJsonObject;
-						if (FJsonSerializer::Deserialize(Reader, FileJsonObject) && FileJsonObject.IsValid())
-						{
-							// Merge the JSON file content into the main JsonObject
-							for (const auto& Pair : FileJsonObject->Values)
-							{
-								JsonObject->SetField(Pair.Key, Pair.Value);
-							}
-						}
-						else
-						{
-							UE_LOG(LogTemp, Warning, TEXT("Failed to parse JSON file: %s"), *JSONFilePath);
-						}
-					}
-					else
-					{
-						UE_LOG(LogTemp, Warning, TEXT("Failed to load JSON file: %s"), *JSONFilePath);
-					}
+					JsonObject->SetField(Pair.Key, Pair.Value);
 				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Failed to parse JSON file: %s"), *content);
 			}
 		}
 		break;
 		case EResponseType::TOON:
 		{
-			JsonObject->SetStringField("response_format", "toon");
+			UE_LOG(LogTemp, Warning, TEXT("Toon is under development"));
 		}
 		break;
 		}
