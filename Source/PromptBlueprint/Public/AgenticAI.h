@@ -19,10 +19,10 @@ struct PROMPTBLUEPRINT_API FChatEntry
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
 	FString User;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
 	FString Chat;
 };
 
@@ -31,16 +31,16 @@ struct PROMPTBLUEPRINT_API FStructuredOutputOptions
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
 	bool IsStructuredOutput = false;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
 	bool LoadFile = false;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
 	EResponseType ResponseType = EResponseType::JSON;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
 	FString SchemaFile = "";
 };
 
