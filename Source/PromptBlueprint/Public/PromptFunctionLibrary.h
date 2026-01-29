@@ -29,6 +29,26 @@ public:
 	   const FStructuredOutputOptions& StructuredOutput,
        const float Temparature = 0.3f
     );
+
+    UFUNCTION(BlueprintCallable, Category = "PromptBlueprint", meta = (AutoCreateRefTerm = "FunctionCalls"))
+    static void LLMFunctionCalling(
+        const FString& Url,
+        const FString& InputMessage,
+        const FString& ModelName,
+        const FString& ApiKey,
+        const FOnChatResponseDetailed& Callback,
+        const FFunctionCalling& FunctionCalls,
+        const float Temparature = 0.3f
+    );
+    UFUNCTION(BlueprintCallable, Category = "PromptBlueprint", meta = (AutoCreateRefTerm = "StructuredOutput"))
+    static void CodeInterpreter(
+        const FString& Url,
+        const FString& InputMessage,
+        const FString& ModelName,
+        const FString& ApiKey,
+        const FOnChatResponseDetailed& Callback,
+        const float Temparature = 0.3f
+    );
 	
 	// Extract value from JSON string using a list of keys
 	UFUNCTION(BlueprintCallable, Category = "PromptBlueprint")
@@ -37,6 +57,10 @@ public:
 	// Extract a chat output
 	UFUNCTION(BlueprintCallable, Category = "PromptBlueprint")
 	static FString ChatOutput(const FString& JsonString);
+
+    // Extract a Function output
+    UFUNCTION(BlueprintCallable, Category = "PromptBlueprint")
+    static FFunctionOutput FunctionOutput(const FString& JsonString);
 
 	UFUNCTION(BlueprintCallable, Category = "PromptBlueprint")
 	static FString MessageInput(const FString SystemMessage, const TArray<FChatEntry>& UserMessages);

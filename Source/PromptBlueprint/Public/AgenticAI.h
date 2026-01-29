@@ -44,6 +44,41 @@ struct PROMPTBLUEPRINT_API FStructuredOutputOptions
 	FString SchemaFile = "";
 };
 
+USTRUCT(BlueprintType)
+struct PROMPTBLUEPRINT_API FFunctionCalling
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
+	bool IsFunctionCalling = true;
+
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
+	bool LoadFile = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
+	EResponseType ResponseType = EResponseType::JSON;
+
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
+	FString SchemaFile = "";
+};
+USTRUCT(BlueprintType)
+struct PROMPTBLUEPRINT_API FFunctionOutput
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
+	FString id = "";
+
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
+	FString type = "function";
+
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
+	FString name = "";
+
+	UPROPERTY(BlueprintReadWrite, Category = "PromptBlueprint")
+	TMap<FString,FString> arguments;
+};
+
 
 UCLASS()
 class PROMPTBLUEPRINT_API AAgenticAI : public AActor

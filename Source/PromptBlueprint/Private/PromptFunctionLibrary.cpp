@@ -114,6 +114,154 @@ void UPromptFunctionLibrary::AIML_LLMs(const FString& Url, const FString& InputM
 	Request->ProcessRequest();
 }
 
+void UPromptFunctionLibrary::LLMFunctionCalling(const FString& Url, const FString& InputMessage, const FString& ModelName, const FString& ApiKey, const FOnChatResponseDetailed& Callback, const FFunctionCalling& FunctionCalls, const float Temparature)
+{
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	Request->SetURL(Url);
+	Request->SetVerb(TEXT("POST"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Request->SetHeader(TEXT("Connection"), TEXT("keep-alive"));
+	Request->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *ApiKey));
+	// Construct the JSON body
+	TSharedPtr<FJsonObject> JsonObject = MakeShared<FJsonObject>();
+	JsonObject->SetStringField("model", ModelName);
+	float temp = FMath::Clamp(Temparature, 0.0f, 1.0f);
+	JsonObject->SetNumberField("temperature", temp);
+	// Add Input message 
+	TArray<TSharedPtr<FJsonValue>> MessageArray;
+	TSharedRef<TJsonReader<>> messageReader = TJsonReaderFactory<>::Create(InputMessage);
+	if (FJsonSerializer::Deserialize(messageReader, MessageArray) && MessageArray.IsValidIndex(0))
+	{
+		JsonObject->SetArrayField("messages", MessageArray);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to parse Input Message JSON."));
+	}
+	// Add function calling
+	if (FunctionCalls.IsFunctionCalling)
+	{
+		FString content;
+		if (FunctionCalls.LoadFile)
+		{
+			FString JSONFilePath = FPaths::ProjectContentDir() / FunctionCalls.SchemaFile;
+			if (!FFileHelper::LoadFileToString(content, *JSONFilePath))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Failed to load schema file: %s"), *JSONFilePath);
+			}
+		}
+		else
+		{
+			content = FunctionCalls.SchemaFile;
+		}
+		switch (FunctionCalls.ResponseType)
+		{
+		case EResponseType::TEXT:
+		{
+			JsonObject->SetStringField("tools", content);
+		}
+		break;
+		case EResponseType::JSON:
+		{
+			// Load the JSON file content
+
+			TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(content);
+			TSharedPtr<FJsonObject> FileJsonObject;
+			if (FJsonSerializer::Deserialize(jsonReader, FileJsonObject) && FileJsonObject.IsValid())
+			{
+				// Merge the JSON file content into the main JsonObject
+				for (const auto& Pair : FileJsonObject->Values)
+				{
+					JsonObject->SetField(Pair.Key, Pair.Value);
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Failed to parse JSON file: %s"), *content);
+			}
+		}
+		break;
+		case EResponseType::TOON:
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Toon is under development"));
+		}
+		break;
+		}
+	}
+	FString RequestBody;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
+	FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
+
+	Request->SetContentAsString(RequestBody);
+	UE_LOG(LogTemp, Display, TEXT("[PromptBlueprint] LLMFunctionCalling: Post %s body %s"), *Url, *RequestBody);
+	// Bind response
+	Request->OnProcessRequestComplete().BindLambda([Callback](FHttpRequestPtr Req, FHttpResponsePtr Response, bool bWasSuccessful)
+		{
+			FString ResponseStr = TEXT("No Response");
+			int32 ResponseCode = -1;
+
+			if (Response.IsValid())
+			{
+				ResponseStr = Response->GetContentAsString();
+				ResponseCode = Response->GetResponseCode();
+			}
+
+			Callback.ExecuteIfBound(ResponseStr, bWasSuccessful, ResponseCode);
+		});
+
+	Request->ProcessRequest();
+}
+
+void UPromptFunctionLibrary::CodeInterpreter(const FString& Url, const FString& InputMessage, const FString& ModelName, const FString& ApiKey, const FOnChatResponseDetailed& Callback, const float Temparature)
+{
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	Request->SetURL(Url);
+	Request->SetVerb(TEXT("POST"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Request->SetHeader(TEXT("Connection"), TEXT("keep-alive"));
+	Request->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *ApiKey));
+	// Construct the JSON body
+	TSharedPtr<FJsonObject> JsonObject = MakeShared<FJsonObject>();
+	JsonObject->SetStringField("model", ModelName);
+	float temp = FMath::Clamp(Temparature, 0.0f, 1.0f);
+	JsonObject->SetNumberField("temperature", temp);
+	// Add Input message 
+	TArray<TSharedPtr<FJsonValue>> MessageArray;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(InputMessage);
+	if (FJsonSerializer::Deserialize(Reader, MessageArray) && MessageArray.IsValidIndex(0))
+	{
+		JsonObject->SetArrayField("messages", MessageArray);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to parse Input Message JSON."));
+	}
+	// Add tools array with code_interpreter
+	TArray<TSharedPtr<FJsonValue>> ToolsArray;
+	TSharedPtr<FJsonObject> ToolObject = MakeShared<FJsonObject>();
+	ToolObject->SetStringField("type", "code_interpreter");
+	ToolsArray.Add(MakeShared<FJsonValueObject>(ToolObject));
+	JsonObject->SetArrayField("tools", ToolsArray);
+	FString RequestBody;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
+	FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
+	Request->SetContentAsString(RequestBody);
+	UE_LOG(LogTemp, Display, TEXT("[PromptBlueprint] CodeInterpreter: Post %s body %s"),*Url, *RequestBody);
+	// Bind response
+	Request->OnProcessRequestComplete().BindLambda([Callback](FHttpRequestPtr Req, FHttpResponsePtr Response, bool bWasSuccessful)
+		{
+			FString ResponseStr = TEXT("No Response");
+			int32 ResponseCode = -1;
+			if (Response.IsValid())
+			{
+				ResponseStr = Response->GetContentAsString();
+				ResponseCode = Response->GetResponseCode();
+			}
+			Callback.ExecuteIfBound(ResponseStr, bWasSuccessful, ResponseCode);
+		});
+	Request->ProcessRequest();
+}
+
 bool UPromptFunctionLibrary::ExtractValueFromChatJson(const FString& JsonString, const TArray<FString>& Keys, FString& OutValue)
 {
 	OutValue = TEXT("");
@@ -228,6 +376,119 @@ FString UPromptFunctionLibrary::ChatOutput(const FString& JsonString)
 		}
 	}
 	return FString();
+}
+
+FFunctionOutput UPromptFunctionLibrary::FunctionOutput(const FString& JsonString)
+{
+	FFunctionOutput Output;
+
+	if (JsonString.IsEmpty())
+	{
+		return Output;
+	}
+
+	TSharedPtr<FJsonObject> RootObject;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+
+	if (FJsonSerializer::Deserialize(Reader, RootObject) && RootObject.IsValid())
+	{
+		// Navigate to choices[0].message.tool_calls[0]
+		if (RootObject->HasField(TEXT("choices")))
+		{
+			const TArray<TSharedPtr<FJsonValue>>& Choices = RootObject->GetArrayField(TEXT("choices"));
+			if (Choices.Num() > 0 && Choices[0]->Type == EJson::Object)
+			{
+				TSharedPtr<FJsonObject> ChoiceObj = Choices[0]->AsObject();
+				if (ChoiceObj->HasField(TEXT("message")))
+				{
+					TSharedPtr<FJsonObject> MessageObj = ChoiceObj->GetObjectField(TEXT("message"));
+					if (MessageObj->HasField(TEXT("tool_calls")))
+					{
+						const TArray<TSharedPtr<FJsonValue>>& ToolCalls = MessageObj->GetArrayField(TEXT("tool_calls"));
+						if (ToolCalls.Num() > 0 && ToolCalls[0]->Type == EJson::Object)
+						{
+							TSharedPtr<FJsonObject> ToolCallObj = ToolCalls[0]->AsObject();
+
+							// Extract id
+							if (ToolCallObj->HasField(TEXT("id")))
+							{
+								Output.id = ToolCallObj->GetStringField(TEXT("id"));
+							}
+
+							// Extract type
+							if (ToolCallObj->HasField(TEXT("type")))
+							{
+								Output.type = ToolCallObj->GetStringField(TEXT("type"));
+							}
+
+							// Extract function object
+							if (ToolCallObj->HasField(TEXT("function")))
+							{
+								TSharedPtr<FJsonObject> FunctionObj = ToolCallObj->GetObjectField(TEXT("function"));
+
+								// Extract function name
+								if (FunctionObj->HasField(TEXT("name")))
+								{
+									Output.name = FunctionObj->GetStringField(TEXT("name"));
+								}
+
+								// Extract and parse arguments
+								if (FunctionObj->HasField(TEXT("arguments")))
+								{
+									FString ArgumentsString = FunctionObj->GetStringField(TEXT("arguments"));
+
+									// Parse arguments JSON string
+									TSharedPtr<FJsonObject> ArgumentsObj;
+									TSharedRef<TJsonReader<>> ArgReader = TJsonReaderFactory<>::Create(ArgumentsString);
+									if (FJsonSerializer::Deserialize(ArgReader, ArgumentsObj) && ArgumentsObj.IsValid())
+									{
+										// Convert arguments object to TMap<FString, FString>
+										for (const auto& Pair : ArgumentsObj->Values)
+										{
+											FString ArgValue;
+											if (Pair.Value->Type == EJson::String)
+											{
+												ArgValue = Pair.Value->AsString();
+											}
+											else if (Pair.Value->Type == EJson::Number)
+											{
+												ArgValue = FString::SanitizeFloat(Pair.Value->AsNumber());
+											}
+											else if (Pair.Value->Type == EJson::Boolean)
+											{
+												ArgValue = Pair.Value->AsBool() ? TEXT("true") : TEXT("false");
+											}
+											else if (Pair.Value->Type == EJson::Null)
+											{
+												ArgValue = TEXT("null");
+											}
+											else
+											{
+												// For complex types (arrays, objects), serialize to string
+												FString TempOutput;
+												TSharedRef<TJsonWriter<>> TempWriter = TJsonWriterFactory<>::Create(&TempOutput);
+												FJsonSerializer::Serialize(Pair.Value, TEXT(""), TempWriter);
+												ArgValue = TempOutput;
+											}
+
+											Output.arguments.Add(Pair.Key, ArgValue);
+										}
+									}
+									else
+									{
+										// If parsing fails, store the raw JSON string with a default key
+										Output.arguments.Add(TEXT("_raw"), ArgumentsString);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return Output;
 }
 
 FString UPromptFunctionLibrary::MessageInput(const FString SystemMessage, const TArray<FChatEntry>& UserMessages)
